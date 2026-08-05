@@ -1,0 +1,66 @@
+id: weather_elt_pipeline
+namespace: extreme_weather
+
+inputs:
+  - id: start_date
+    type: STRING
+    required: false
+    description: "Format YYYY-MM-DD. Defaults to yesterday if triggered by schedule."
+  - id: end_date
+    type: STRING
+    required: false
+    description: "Format YYYY-MM-DD. Defaults to yesterday if triggered by schedule."
+
+variables:
+  gcp_project: "kestra-sandbox-504410"
+  gcs_bucket: "extreme_weather_data_lake_jude"
+  bq_dataset: "extreme_weather_dataset"
+  bq_table: "raw_weather_data"
+  dynamic_start: "{{ inputs.start_date ?? execution.startDate | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
+  dynamic_end: "{{ inputs.end_date ?? execution.startDate | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
+
+tasks:
+  - id: workspace
+    type: io.kestra.plugin.core.flow.WorkingDirectory
+    tasks:
+      - id: clone_repo
+        type: io.kestra.plugin.git.Clone
+        url: https://github.com/jude-craft/extreme-weather-elt-pipeline.git
+        branch: main
+
+      - id: extract_weather_data
+        type: io.kestra.plugin.scripts.python.Commands
+        taskRunner:
+          type: io.kestra.plugin.scripts.runner.docker.Docker
+        containerImage: python:3.11-slim
+        env:
+          START_DATE: "{{ vars.dynamic_start }}"
+          END_DATE: "{{ vars.dynamic_end }}"
+        beforeCommands:
+          - pip install requests
+        commands:
+          - python extract.py
+        outputFiles:
+          - "nairobi_weather_extract.csv"
+
+  - id: upload_to_gcs
+    type: io.kestra.plugin.gcp.gcs.Upload
+    serviceAccount: "{{ secret('GCP_CREDS') }}"
+    from: "{{ outputs.extract_weather_data.outputFiles['nairobi_weather_extract.csv'] }}"
+    to: "gs://{{ vars.gcs_bucket }}/raw/nairobi_weather_{{ vars.dynamic_start }}_to_{{ vars.dynamic_end }}.csv"
+
+  - id: load_to_bigquery
+    type: io.kestra.plugin.gcp.bigquery.Load
+    projectId: "{{ vars.gcp_project }}"
+    destinationTable: "{{ vars.gcp_project }}.{{ vars.bq_dataset }}.{{ vars.bq_table }}"
+    from: "gs://{{ vars.gcs_bucket }}/raw/nairobi_weather_{{ vars.dynamic_start }}_to_{{ vars.dynamic_end }}.csv"
+    format: CSV
+    autodetect: true
+    csvOptions:
+      skipLeadingRows: 1
+    writeDisposition: WRITE_APPEND
+
+triggers:
+  - id: daily_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 1 * * *"

@@ -1,7 +1,6 @@
 import requests
 import csv
-from datetime import datetime, timedelta
-
+import os
 
 def fetch_weather_data(lat, lon, start_date, end_date):
     url = "https://archive-api.open-meteo.com/v1/archive"
@@ -26,12 +25,10 @@ def fetch_weather_data(lat, lon, start_date, end_date):
     response = requests.get(url, params=params)
     response.raise_for_status()
     
-    # Get the raw json response
     raw_data = response.json()
     daily_data = raw_data["daily"]
     
-    
-    filename = f"nairobi_weather_backfill_{start_date}_to_{end_date}.csv"
+    filename = "nairobi_weather_extract.csv"
     
     with open (filename, 'w', newline='') as f:
         writer = csv.writer(f)
@@ -52,12 +49,13 @@ def fetch_weather_data(lat, lon, start_date, end_date):
                 daily_data["et0_fao_evapotranspiration"][i]
             ])
          
-        
     print(f"Success! {num_days} rows of historical data saved to {filename}")
     
 if __name__ == "__main__":
-    # 20 year backfil parameters for deep climate analysis
-    end_date_str = "2026-08-05"
-    start_date_str = "2006-08-05"
+    start_date_str = os.environ.get('START_DATE')
+    end_date_str = os.environ.get('END_DATE')
     
-    fetch_weather_data(-1.2921, 36.8219, start_date_str, end_date_str)
+    if not start_date_str or not end_date_str:
+        raise ValueError("START_DATE and END_DATE environment variables must be set.")
+    
+    fetch_weather_data(-1.286389, 36.817223, start_date_str, end_date_str)

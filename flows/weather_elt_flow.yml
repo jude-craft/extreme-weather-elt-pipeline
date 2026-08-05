@@ -52,7 +52,7 @@ tasks:
     type: io.kestra.plugin.gcp.bigquery.Load
     projectId: "{{ vars.gcp_project }}"
     destinationTable: "{{ vars.gcp_project }}.{{ vars.bq_dataset }}.{{ vars.bq_table }}"
-    from: "gs://{{ vars.gcs_bucket }}/raw/nairobi_weather_{{ vars.dynamic_start }}_to_{{ vars.dynamic_end }}.csv"
+    from: "{{ outputs.extract_weather_data.outputFiles['nairobi_weather_extract.csv'] }}"
     format: CSV
     autodetect: true
     csvOptions:

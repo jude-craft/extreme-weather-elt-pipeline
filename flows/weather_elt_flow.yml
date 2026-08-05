@@ -16,8 +16,8 @@ variables:
   gcs_bucket: "extreme_weather_data_lake_jude"
   bq_dataset: "extreme_weather_dataset"
   bq_table: "raw_weather_data"
-  dynamic_start: "{{ inputs.start_date ?? execution.startDate | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
-  dynamic_end: "{{ inputs.end_date ?? execution.startDate | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
+  dynamic_start: "{{ inputs.start_date ? inputs.start_date : execution.startDate | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
+  dynamic_end: "{{ inputs.end_date ? inputs.end_date : execution.startDate | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
 
 tasks:
   - id: workspace

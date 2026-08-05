@@ -45,7 +45,6 @@ tasks:
 
   - id: upload_to_gcs
     type: io.kestra.plugin.gcp.gcs.Upload
-    serviceAccount: "{{ secret('GCP_CREDS') }}"
     from: "{{ outputs.extract_weather_data.outputFiles['nairobi_weather_extract.csv'] }}"
     to: "gs://{{ vars.gcs_bucket }}/raw/nairobi_weather_{{ vars.dynamic_start }}_to_{{ vars.dynamic_end }}.csv"
 
